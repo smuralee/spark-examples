@@ -41,6 +41,7 @@ public class WordCount {
         JavaPairRDD<String, Integer> wordWithCount = wordAsTuple.reduceByKey(Integer::sum);
         List<Tuple2<String, Integer>> output = wordWithCount.collect();
 
+        log.info("Initiated the writer for the output file");
         BufferedWriter writer = new BufferedWriter(new FileWriter(outFileName, true));
 
         for (Tuple2<?, ?> tuple : output) {
@@ -61,6 +62,7 @@ public class WordCount {
                         .key(outFileName)
                         .build(), new File(outFileName).toPath()
         );
+        log.info("Uploaded the output to S3 bucket");
 
         ctx.stop();
     }

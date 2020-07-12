@@ -7,8 +7,11 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.List;
@@ -17,13 +20,14 @@ import java.util.regex.Pattern;
 public class WordCount {
     private static final Pattern SPACE = Pattern.compile(" ");
     private static final Logger log = LoggerFactory.getLogger(WordCount.class);
-    private static final String filePrefix = "wordCounts";
+    private static final String outFileName = "wordCounts.out.log";
     private static final String newLine = "\n";
 
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 1) {
+        if (args.length < 2) {
             log.error("Usage: JavaWordCount <file>");
+            log.error("Usage: Output destination <S3 bucket>");
             System.exit(1);
         }
         SparkConf sparkConf = new SparkConf()
@@ -37,12 +41,7 @@ public class WordCount {
         JavaPairRDD<String, Integer> wordWithCount = wordAsTuple.reduceByKey(Integer::sum);
         List<Tuple2<String, Integer>> output = wordWithCount.collect();
 
-        // Create a local file for writing content
-        StringBuilder sb = new StringBuilder(filePrefix);
-        sb.append(System.currentTimeMillis());
-        sb.append(".out.log");
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(sb.toString(), true));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outFileName, true));
 
         for (Tuple2<?, ?> tuple : output) {
             log.info(tuple._1() + ": " + tuple._2());
@@ -51,6 +50,18 @@ public class WordCount {
         }
 
         writer.close();
+
+        //Upload file to S3
+        final String bucketName = args[1];
+
+        S3Client s3 = S3Client.builder().build();
+        s3.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(outFileName)
+                        .build(), new File(outFileName).toPath()
+        );
+
         ctx.stop();
     }
 }

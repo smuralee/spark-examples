@@ -20,6 +20,11 @@ mvn clean install
 
 ```
 java -jar spark-examples-1.0.jar input-file.txt output-s3-bucket-123456789012
+
+spark-submit --deploy-mode client --class com.smuralee.WordCount \
+             s3://s3-bucket-123456789012-input/spark-examples-1.0.jar \
+             s3://s3-bucket-123456789012-input/input-file.txt \
+             s3-bucket-123456789012-output
 ```
 
 
